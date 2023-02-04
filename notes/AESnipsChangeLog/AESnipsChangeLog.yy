@@ -4,6 +4,6 @@
   "name": "AESnipsChangeLog",
   "parent": {
     "name": "Documentation",
-    "path": "folders/Scripts/AESnips/Documentation.yy",
+    "path": "folders/AESnips/Documentation.yy",
   },
 }

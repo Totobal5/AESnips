@@ -1,11 +1,11 @@
 {
   "resourceType": "GMScript",
   "resourceVersion": "1.0",
-  "name": "cowboy_fire_bullet",
+  "name": "AEPlayer",
   "isDnD": false,
   "isCompatibility": false,
   "parent": {
-    "name": "Demo",
-    "path": "folders/Demo.yy",
+    "name": "AESnips",
+    "path": "folders/AESnips.yy",
   },
 }

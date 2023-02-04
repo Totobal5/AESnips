@@ -1,5 +1,5 @@
 /// @desc A SnipPlayer is a struct that allows Snips to be played withouth being attached to any object and without relying on object properties like image_index or image_speed
-function SnipPlayer() constructor
+function AEPlayer() constructor
 {
 	#region Globar variables
 	static gPaused = false; // global paused
@@ -468,7 +468,7 @@ function SnipPlayer() constructor
 	#region Playback functions
 	
 	///@desc Immediately plays the given snip with or without transition
-	///@param {Struct.Snip} snip                The Snip that the SnipPlayer should play
+	///@param {Struct.AESnip} snip                The Snip that the SnipPlayer should play
 	///@param {bool}        [should_transition] Whether or not the SnipPlayer should try to find a transition between the current snip and the snip to play
 	static play = function(_snip, _shouldTransition=false)
 	{
@@ -537,14 +537,14 @@ function SnipPlayer() constructor
 	}
 	
 	///@desc Starts the snip system with the given snip
-	///@param {Struct.Snip} snip The snip to start with
+	///@param {Struct.AESnip} snip The snip to start with
 	static start = function(_snip)
 	{
 		play(_snip, false);
 	}
 	
 	///@desc Sets an snip to play as soon as the current snip is done playing
-	///@param {Struct.Snip} snip             The snip to play
+	///@param {Struct.AESnip} snip             The snip to play
 	///@param {bool}        shouldTransition Whether or not the system should try to find a transition between the current snip and the snip to play
 	static playNext = function(_snip, _should_transition)
 	{
@@ -579,7 +579,7 @@ function SnipPlayer() constructor
 	}
 	
 	///@desc Resets the performance count in all the loops in the given snip
-	///@param {Struct.Snip} snip The snip that the loops are a part of
+	///@param {Struct.AESnip} snip The snip that the loops are a part of
 	static resetLoops = function(_snip)
 	{
 		//Clear out the performance array
@@ -640,7 +640,7 @@ function SnipPlayer() constructor
 	}
 
 	///@desc Only plays the given Snip if it is not already playing
-	///@param {Struct.Snip} snip             The Snip you would like to play
+	///@param {Struct.AESnip} snip             The Snip you would like to play
 	///@param {bool}        shouldTransition Whether or not to Transition when playing the Snip
 	static playRequest = function(_snip, _should_transition)
 	{
@@ -650,7 +650,7 @@ function SnipPlayer() constructor
 	}
 	
 	///@desc Returns whether or not the given snip is currently playing (or if a transition to the snip is playing depending on the second parameter)
-	///@param {Struct.Snip} snip The Snip to check
+	///@param {Struct.AESnip} snip The Snip to check
 	///@param {bool} checkTransition Whether or not to check if the current Snip is transitioning to the given snip
 	static isPlaying = function(_snip, _target)
 	{
@@ -658,8 +658,8 @@ function SnipPlayer() constructor
 	}
 
 	///@desc Returns a transition snip between the from snip and the to snip (or undefined if none exists)
-	///@param {Struct.Snip} from The snip that the transition comes from
-	///@param {Struct.Snip} to   The snip that the transition comes from
+	///@param {Struct.AESnip} from The snip that the transition comes from
+	///@param {Struct.AESnip} to   The snip that the transition comes from
 	static findTransition = function(_from, _to)
 	{
 		// The list to loop through to try to find the snip

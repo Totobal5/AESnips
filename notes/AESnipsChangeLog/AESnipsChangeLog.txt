@@ -65,3 +65,9 @@
 	///-All functions should now be accessible via the function(instance, args) syntax
 			and the instance.function(args) syntax
 }
+
+0.1.5 by toto
+{
+	Now only constructors
+}
+

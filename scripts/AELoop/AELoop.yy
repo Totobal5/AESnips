@@ -1,11 +1,11 @@
 {
   "resourceType": "GMScript",
   "resourceVersion": "1.0",
-  "name": "AESnipsPlayer",
+  "name": "AELoop",
   "isDnD": false,
   "isCompatibility": false,
   "parent": {
     "name": "AESnips",
-    "path": "folders/Scripts/AESnips.yy",
+    "path": "folders/AESnips.yy",
   },
 }
