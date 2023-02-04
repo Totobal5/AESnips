@@ -452,7 +452,7 @@ function SnipPlayer() constructor
 	/// @param {Real}  rotation  The angle to draw at
 	/// @param {Color} color     The color to draw with
 	/// @param {Real}  alpha     The alpha to draw with
-	static draw_ext = function(_x, _y, _xscale, _yscale, _rotation, _color, _alpha)
+	static drawExt = function(_x, _y, _xscale, _yscale, _rotation, _color, _alpha)
 	{
 		//Ask to make sure the SnipPlayer is actually playing a Snip
 		if (currentSnip != undefined)
@@ -663,24 +663,20 @@ function SnipPlayer() constructor
 	static findTransition = function(_from, _to)
 	{
 		// The list to loop through to try to find the snip
-		var _useArray = _from.outgoing_transitions;
+		var _useArray = _from.outTransitions;
 		// Get the size of the from's outgoing list
-		var _outSize  = array_length(_from.outgoing_transitions);
+		var _outSize  = array_length(_useArray);
 		// Get the size of the to's incoming list
-		var _inSize   = array_length(_to  .incoming_transitions);
-		// If the from list is smaller than the in list
-		if (_outSize < _inSize)
-		{
-			// Search through the to's incoming transitions
-			_useArray = _to.incoming_transitions;
-		}
+		var _inSize   = array_length(_to.incTransitions);
+		// If the from list is smaller than the in list search through the to's incoming transitions 
+		if (_outSize < _inSize) _useArray = _to.incTransitions;
 	
 		//Loop through the from list or the to list
 		var i=0; repeat(array_length(_useArray) )
 		{
 			//Get the current snip in the list
 			var _current_transition = _useArray[i];
-			if (_current_transition.snip_from == _from && _current_transition.snip_to == _to)
+			if (_current_transition.from == _from && _current_transition.to == _to)
 			{
 				//Return the transition's use snip if it matches the from and the to
 				return _current_transition;
@@ -770,6 +766,178 @@ function SnipPlayer() constructor
 	static getFrameToIndex = function(_frame)
 	{
 		return (_frame + currentSnip.frameStart);
+	}
+
+	///@desc Draws a visual representation of the Snip that an Object is currently playing
+	///@param {real} x The x position to draw the debug panel
+	///@param {real} y The y position to draw the debug panel
+	static drawDebug = function(_x,_y)
+	{	
+		//Get the draw values so that it can be reset at the end of the function
+		var _old_color = draw_get_color();
+		var _old_alpha = draw_get_alpha();
+	
+		//The first step is to quit with a red box if there is no Snip associated with the object
+		if (currentSnip == undefined)
+		{
+			draw_set_color(c_red);
+				draw_rectangle(_x,_y, _x+16, _y+16, false);
+			draw_set_color(_old_color);
+			exit;
+		}
+	
+		//The next step is to get all the relevant information from the currently playing Snip
+		var _sprite = currentSnip.sprite;
+		var _width  = sprite_get_width(_sprite);
+		var _height = sprite_get_height(_sprite);
+		var _count  = sprite_get_number(_sprite);
+		var _start  = currentSnip.frameStart;
+		var _end    = currentSnip.frameEnd;
+		var _index  = floor(imageIndex);
+	
+		//Now set up values to change the way it looks
+		var _back_color = c_white;
+		var _progress_bar_color = c_lime;
+		var _separation = 2;
+		var _transparent_amount = .4;
+		var _current_frame_offset = floor(_height * .25);
+		var _loop_line_size = floor(_width * .1);
+		var _loop_current_color = c_lime;
+		var _loop_color = c_aqua;
+		var _loop_zero_color = c_yellow;
+		var _loop_none_color = c_red;
+		var _loop_alpha = .7;
+		var _no_loop_alpha = .25;
+		var _frame_script_color = c_orange;
+	
+		var _sprite_x_axis = sprite_get_xoffset(_sprite);
+		var _sprite_y_axis = sprite_get_yoffset(_sprite);
+	
+		//Draw each frame of the sprite
+		var _i = 0;
+		repeat(_count)
+		{
+			//Get the x and y values for the current sprite frame
+			var _x1 = _x + (_i * _width) + (_separation * _i);
+			var _x2 = _x1 + _width;
+			var _y1 = _y;
+			var _y2 = _y + _height;
+		
+			//Draw a background for the sprite
+			//If it's a part of the Snip then it should have full opacity
+			//If it's not then reduce the alpha
+			if (_i >= _start and _i <= _end)
+			{
+				//The frame is part of the Snip so set the alpha to 1
+				draw_set_alpha(1);
+			}
+			else
+			{
+				//Set the alpha to the transparent value
+				draw_set_alpha(_transparent_amount);
+			}
+		
+			//Make the frame stick out if it's the current image_index
+			if (_i == _index)
+			{
+				_y2 = _y + _height + _current_frame_offset;
+			}
+		
+			//Now draw everything
+			draw_set_color(_back_color);
+		
+			//Draw the background for the frame
+			draw_rectangle(_x1, _y1, _x2, _y2, false);
+		
+			//Draw each sprite frame
+			draw_sprite(_sprite, _i, _x1 + _sprite_x_axis, _y1 + _sprite_y_axis);
+		
+			//If the frame has a script add a small dot below it
+			var _callbacks = currentSnip.frameCallback;
+			if (_i - _start < array_length(_callbacks)
+			and _i - _start >= 0)
+			{	
+				var _frame = _callbacks[_i - _start];
+				if (_frame != undefined)
+				{
+					draw_set_color(_frame_script_color);
+					draw_ellipse(_x1 + (_width /2), _y1 + _height, _x1 + (_width/2) + 5, _y1 + _height + 5, false);
+				}
+			}
+		
+			_i += 1;
+		}
+	
+		draw_set_alpha(1);
+	
+		//Now draw some more things
+		//A progress bar to show how much time has been spent on a single frame
+		var _px1 = _x + (_index * _width)  + (_separation * _index);
+		var _px2 = _px1 + (_width * (imageIndex - _index));
+		var _py1 = _y + _height + 1;
+		var _py2 = _py1 + _current_frame_offset - 1;
+		draw_set_color(_progress_bar_color);
+		draw_rectangle(_px1, _py1, _px2, _py2, false);
+	
+		//Now draw the Loops in the Snip
+		//First, draw the base loops
+		_i = 0;
+		repeat(array_length(currentSnip.loops))
+		{
+			//Get the loop
+			var _loop = currentSnip.loops[_i];
+		
+			//If the loop should repeat
+			if(_loop.iterate > 0)
+			{
+				draw_set_color(_loop_color);
+			
+				if (_loop == currentLoop)
+				{
+					draw_set_color(_loop_current_color);
+				}
+			
+				draw_set_alpha(_loop_alpha);
+			}
+			else
+			{
+				draw_set_alpha(_no_loop_alpha);
+				//If the loop should skip
+				if (_loop.iterate < 0)
+				{
+					draw_set_color(_loop_none_color);
+				}
+				else //If the loop should play without repeating
+				{
+					draw_set_color(_loop_zero_color);
+				}
+			
+			}
+		
+			//Get the values for the start vertical line
+			var _sx1 = _x + ((_loop.start + _start) * _width) + (_separation * (_loop.start + _start));
+			var _sx2 = _sx1 + _loop_line_size;
+			
+			//Get the values for the end vertical line
+			var _ex1 = _x + ((_loop.finish + _start) * _width) - (_loop_line_size*2) + ((_loop.finish + 1 + _start) * _separation) - 1;
+			var _ex2 = _ex1 + _loop_line_size;
+			
+			//Get the vertical values
+			var _ly1 = _y + _height + 1;
+			var _ly2 = _ly1 + ((_i+1) * _loop_line_size) + (_i * _separation) + _current_frame_offset;
+			
+			//Draw the vertical lines on the start and end frames
+			draw_rectangle(_sx1, _ly1, _sx2, _ly2 - 1, false);
+			draw_rectangle(_ex1, _ly1, _ex2, _ly2 - 1, false);
+			//Draw the horizontal line
+			draw_rectangle(_sx1, _ly2, _ex2, _ly2 + _loop_line_size - 1, false);
+		
+			_i +=1;
+		}
+	
+		//Reset back to the old values
+		draw_set_color(_old_color);
+		draw_set_alpha(_old_alpha);
 	}
 
 	#endregion

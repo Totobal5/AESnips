@@ -58,10 +58,11 @@ function Snip(_sprite, _speed, _start, _end, _endType=SnipEnd.replay, _successor
 	}
 	
 	// Array to hold per-frame items like speed and actions
-	frameSpeed       = array_create(frameCount, 1);
-	frameCallback     = array_create(frameCount, undefined);
-	frameCallbackArgs = array_create(frameCount, undefined);
-	frameCallback[0] = function() {}
+	frameSpeed     = array_create(frameCount, 1);
+	frameCallback  = array_create(frameCount, undefined);
+	var _arr=[];
+	frameCallbackArgs = array_create(frameCount, _arr);
+	frameCallback[0]  = function() {}
 	
 	//A list to hold all the loops in the snip
 	loops = array_create(0);
@@ -115,8 +116,20 @@ function Snip(_sprite, _speed, _start, _end, _endType=SnipEnd.replay, _successor
 			throw("Frame Speeds must always be larger than 0. To play a Snip backwards set the Snip speed to a negative value"); 
 		} }#endregion
 		frameSpeed[_frame] = _speed;
+		return self;
 	}
-	
+
+	///@param {Array<real>} array [frame, speed]
+	static setFrameSpeedExt = function(_array) 
+	{
+		var i=0; repeat(array_length(_array) div 2)
+		{
+			setFrameSpeed(_array[i], _array[i + 1] );
+			i = i + 1;
+		}
+		return self;
+	}
+
 	///@desc Returns the speed for the given frame in the given Snip
 	///@param {real} frame The frame number to set to the given speed (not image_index)
 	static getFrameSpeed = function(_frame)
@@ -402,7 +415,7 @@ function Transition(_from, _to, _snip) constructor
 		var _index = array_find_index(_oto.incTransitions, function(v, i) {
 			return (v == self);
 		})
-		array_delete(_oto.incTransitions, _index);
+		array_delete(_oto.incTransitions, _index, 1);
 		
 		// Add the transition to the from
 		array_push(_oto.incTransitions, self);
@@ -425,7 +438,7 @@ function Transition(_from, _to, _snip) constructor
 		var _index = array_find_index(_ofrom.outTransitions, function(v, i) {
 			return (v == self);
 		})
-		array_delete(_ofrom.outTransitions, _index);
+		array_delete(_ofrom.outTransitions, _index, 1);
 		
 		// Add the transition to the from
 		array_push(_from.outTransitions, self);
