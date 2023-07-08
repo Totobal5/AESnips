@@ -1,17 +1,19 @@
-//How the Snip should behave when it finishes playing
-#macro AE_DEBUG true
+// Feather ignore all
+#macro __AE_DEBUG true
 
 #macro AE_DIR_FORWARD   1
 #macro AE_DIR_BACKWARD -1
 
-enum SnipEnd {
-	stop    ,     //Freeze on the completed frame
-	stopHead,     //Jump back to the first frame and freeze
-	stopTail,     //Jump to the last frame and freeze
-	replay  ,     //Jump back to the first frame and play again (or the last frame if the Snip is being played backward)  DEFAULT
-	pingpong,     //Reverse the Snip speed, transition to the next step when it hits the first or last frame
-	pingpongHead, //Reverse the Snip speed, only transition to next Snip when it's back to the first frame
-	pingpongTail  //Reverse the Snip speed, only transition to next Snip when it's back to the final frame
+// How the Snip should behave when it finishes playing
+enum AE_EndType
+{
+	stop    ,     // Freeze on the completed frame
+	stopHead,     // Jump back to the first frame and freeze
+	stopTail,     // Jump to the last frame and freeze
+	replay  ,     // Jump back to the first frame and play again (or the last frame if the Snip is being played backward)  DEFAULT
+	pingpong,     // Reverse the Snip speed, transition to the next step when it hits the first or last frame
+	pingpongHead, // Reverse the Snip speed, only transition to next Snip when it's back to the first frame
+	pingpongTail  // Reverse the Snip speed, only transition to next Snip when it's back to the final frame
 }
 
 ///@desc Clones all the Transitions associated with the source and applies them to the destination as well (clears all previous Transitions in the destination)
@@ -20,7 +22,7 @@ enum SnipEnd {
 function snip_clone_transitions(_source, _destination)
 {
 	#region Check
-	if (AE_DEBUG) {
+	if (__AE_DEBUG) {
 	if (_source == undefined)
 	{
 		throw "snip_clone_transitions() Source undefined";
@@ -58,7 +60,7 @@ function snip_clone_transitions(_source, _destination)
 function snip_clone_loops(_source, _destination)
 {
 	#region Check
-	if (AE_DEBUG) {
+	if (__AE_DEBUG) {
 	if (_source == undefined)
 	{
 		throw "snip_clone_loops() Source undefined";
@@ -87,13 +89,13 @@ function snip_clone_loops(_source, _destination)
 ///@desc Pauses the entire snip system
 function snip_global_pause()
 {
-	static sn = new SnipPlayer();
+	static sn = new AEPlayer();
 	sn.gPaused = true;
 }
 
 ///@desc Resumes the entire snip system (but does not resume snips that have been individually paused)
 function snip_global_resume()
 {
-	static sn = new SnipPlayer();
+	static sn = new AEPlayer();
 	sn.gPaused = false;
 }

@@ -1,9 +1,9 @@
 /// @description Set up the snips
 //Create Snips
-idle_snip = new AESnip(red_cowboy_full, .5, 0,  2,   SnipEnd.replay);
-draw_snip = new AESnip(red_cowboy_full,  1, 3,  6, SnipEnd.stopHead);
-fire_snip = new AESnip(red_cowboy_full,  1, 7, 10, SnipEnd.stopTail);
-holster_snip = new AESnip(red_cowboy_full, 1, 11, 19,  SnipEnd.stop);
+idle_snip = new AESnip(red_cowboy_full, .5, 0,  2,    AE_EndType.replay);
+draw_snip = new AESnip(red_cowboy_full,  1, 3,  6,    AE_EndType.stopHead);
+fire_snip = new AESnip(red_cowboy_full,  1, 7, 10,    AE_EndType.stopTail);
+holster_snip = new AESnip(red_cowboy_full, 1, 11, 19, AE_EndType.stop);
 //Set the idle Snip as the fire Snip's successor and automatically create a precursor
 fire_snip.setSuccessor(idle_snip, true);
 fire_snip.setFrameCallback(1, method(id, cowboy_fire_bullet), [-6]);
@@ -19,4 +19,4 @@ holster_transition = new AETransition(fire_snip, idle_snip, holster_snip);
 twirl_loop = new AELoop(holster_snip, 0, 2, 3);
 
 my_player = new AEPlayer();
-my_player.start(idle_snip);
+my_player.play(idle_snip);

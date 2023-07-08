@@ -1,7 +1,7 @@
 /// @description Perform the snip step event
 show_debug_message("(Blue cowboy) image_index: {0}", my_player.imageIndex);
 
-my_player.step();
+//my_player.step();
 
 //The user can press numbers 1-9 to change how many times the cowboy shoots his gun
 if (keyboard_lastkey != -1) //If a key has been pressed

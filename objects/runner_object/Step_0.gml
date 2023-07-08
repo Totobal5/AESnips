@@ -1,2 +1,2 @@
 /// @description Snip step event
-my_player.step();
+//my_player.step();
