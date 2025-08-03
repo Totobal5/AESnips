@@ -71,3 +71,8 @@
 	Now only constructors
 }
 
+2.0.0 by toto
+{
+	* update to IDE v2024.13.1.193  Runtime v2024.13.1.242 
+	* new refactor
+}
