@@ -1,2 +1,4 @@
-//Play the fire Snip. This will automatically create the bullet and holster the gun
-my_player.playNext(fire_snip, true);
+/// @description Play the fire Snip.
+// This will automatically find the transition from idle,
+// play the fire animation, and then transition back to idle.
+my_player.PlayNext(fire_snip, true);

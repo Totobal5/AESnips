@@ -1,0 +1,11 @@
+{
+  "$GMNotes":"",
+  "%Name":"AESnips_License",
+  "name":"AESnips_License",
+  "parent":{
+    "name":"AESnips",
+    "path":"folders/AESnips.yy",
+  },
+  "resourceType":"GMNotes",
+  "resourceVersion":"2.0",
+}

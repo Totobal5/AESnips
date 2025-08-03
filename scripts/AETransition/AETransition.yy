@@ -1,11 +1,13 @@
 {
-  "resourceType": "GMScript",
-  "resourceVersion": "1.0",
-  "name": "AETransition",
-  "isCompatibility": false,
-  "isDnD": false,
-  "parent": {
-    "name": "AESnips",
-    "path": "folders/AESnips.yy",
+  "$GMScript":"v1",
+  "%Name":"AETransition",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"AETransition",
+  "parent":{
+    "name":"AESnips",
+    "path":"folders/AESnips.yy",
   },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
 }

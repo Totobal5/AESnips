@@ -1,11 +1,13 @@
 {
-  "resourceType": "GMScript",
-  "resourceVersion": "1.0",
-  "name": "AESnip",
-  "isCompatibility": false,
-  "isDnD": false,
-  "parent": {
-    "name": "AESnips",
-    "path": "folders/AESnips.yy",
+  "$GMScript":"v1",
+  "%Name":"AESnip",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"AESnip",
+  "parent":{
+    "name":"AESnips",
+    "path":"folders/AESnips.yy",
   },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
 }

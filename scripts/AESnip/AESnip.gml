@@ -1,381 +1,340 @@
 // Feather ignore all
-///@desc A Snip is a struct. It contains a lot of properties. Snips will override an objects image_index, sprite_index, and image_speed
-///@param {Asset.GMSprite}  sprite       The sprite to use for the snip
-///@param {real}            speed        The speed that the snip will play at (same scale as image_speed)
-///@param {real}            [startFrame] Optional argument to create an snip from a subsection of a sprite (default 0)
-///@param {real}            [endFrame]   Optional argument to create an snip from a subsection of a sprite (default sprite_get_number(sprite)-1)
-///@param {Enum.AE_EndType} [endType]    How to behave when the Snip finishes	
-///@param {Struct.AESnip}   [successor]  A Snip to play after this snip finished playing forwards (use -1 or undefined for no successor)
-function AESnip(_sprite, _speed, _start, _end, _endType=AE_EndType.replay, _successor=undefined) constructor
+/// @desc A Snip is a struct that defines an animation clip with its properties and behaviors.
+/// @param {Asset.GMSprite} sprite The sprite to use for the snip.
+/// @param {Real} speed The speed that the snip will play at.
+/// @param {Real} [start_frame=0] Optional argument to create a snip from a subsection of a sprite.
+/// @param {Real} [end_frame] Optional argument, defaults to the last frame of the sprite.
+/// @param {Enum.AE_EndType} [end_type=AE_EndType.replay] How the Snip behaves when it finishes.
+/// @param {Struct.AESnip} [successor] A Snip to play after this one finishes.
+function AESnip(_sprite, _speed, _start_frame, _end_frame, _end_type=AE_EndType.Replay, _successor=undefined) constructor
 {
-	/// @ignore The sprite used for the snip
+	#region Public Instance Variables
+	
 	sprite = _sprite;
-	/// @ignore The speed that the snip should be played at
-	speed  = _speed;
-	/// @ignore The default direction to play the Snip (1 for forward, -1 for backwards)
-	direction = 1;
-	/// @ignore A list of transitions that lead to this snip
-	incTransitions = array_create(0);
-	/// @ignore A list of transitions that come from this snip
-	outTransitions = array_create(0);
-	/// @ignore How the Snip should act when it finishes playing and there's not a Snip to play next
-	endType = _endType; //The end_type will be overridden with snip_play_next(), or if the Snip has a successor/precursor
-	
-	// The successor will be overridden by the snip_play_next() function
-	/// @ignore Successors will also be ignored if the Snip is played as a transition. The Snip to play every time this Snip ends playing forward
+	speed = _speed;
+	direction = AE_DIR_FORWARD;
+	end_type = _end_type;
 	successor = _successor;
-	/// @ignore Whether or not to use Transitions when playing this Snip's successor
-	successorTransition = (_successor != undefined);
 	
-	/// @ignore A script to execute when the snip finishes playing
-	completeScript = function() {};
-	/// @ignore The argument to use in the script completion
-	completeScriptArgs = [];
+	// Frame data (read-only)
+	frame_start = 0;
+	frame_end = 0;
+	frame_count = 0;
+	
+	#endregion
+	
+	#region Private Instance Variables
+	
+	__incoming_transitions = [];
+	__outgoing_transitions = [];
+	__successor_transition = (_successor != undefined);
+	__completion_script = undefined;
+	__completion_script_args = [];
+	__frame_callback = [];
+	__frame_callback_args = [];
+	__frame_speed = [];
+	__loops = [];
+	__speed_scale = 1;
+	
+	#endregion
+	
+	#region Initialization
+	
+	// Set frame range and initialize arrays
+	var _end = _end_frame ?? sprite_get_number(sprite) - 1;
+	__SetFrameRangeInternal(_start_frame ?? 0, _end);
+	
+	// Calculate speed scale based on sprite's properties
+	__UpdateSpeedScale();
+	
+	#endregion
+	
+	#region Internal Logic Helpers (Private)
+	
+	/// @desc Sets the frame range and resizes associated arrays.
 	/// @ignore
-	completeScript = undefined;
-	/// @ignore Set the start frame of the snip to 0 if no value is given or set it to the given start value
-	frameStart = _start ?? 0;
-	/// @ignore Set the end value to sprite_get_number(_sprite) - 1 if no value is given or set it to the given end value
-	frameEnd = _end ?? sprite_get_number(_sprite) - 1;
-	/// @ignore Get the total number of frames in the snip by subtracting the start from the end and adding 1
-	frameCount = (frameEnd - frameStart) + 1;
-	
-	// Throw an error if the start and end don't match right
-	if (frameCount <= 0) {
-	throw("Error creating snip for"+sprite_get_name(_sprite)+": End must be greater than start. \nStart"+string(frameStart)+"End: "+string(frameEnd));
-	}
-	
-	/// @ignore Array to hold per-frame items like speed and actions
-	frameSpeed = array_create(frameCount, 1);
-	/// @ignore Callbacks
-	frameCallback  = array_create(frameCount, undefined);
-	var _arr=[];
-	/// @ignore
-	frameCallbackArgs = array_create(frameCount, _arr);
-	/// @ignore
-	frameCallback[0] = function() {}
-	
-	/// @ignore A list to hold all the loops in the snip
-	loops = array_create(0);
-	/// @ignore A value to handle the Sprite speed and speed types
-	speedScale = 1;
-	if (_sprite != undefined) {
-		// Feather disable once GM1044
-		var _type = (sprite_get_speed_type(_sprite) == spritespeed_framespergameframe);
-		speedScale = (_type) ? sprite_get_speed(_sprite) : sprite_get_speed(_sprite) / game_get_speed(gamespeed_fps);
-	}
-	
-	#region Methods
-	/// @desc Change the start and end frame of the Snip
-	/// @param {real} startFrame
-	/// @param {real} endFrame
-	static setFrameSE = function(_start, _end) 
+	static __SetFrameRangeInternal = function(_start, _end)
 	{
-		// Set the start frame of the snip to 0 if no value is given or set it to the given start value
-		frameStart = _start ?? 0;
-		// Set the end value to sprite_get_number(_sprite) - 1 if no value is given or set it to the given end value
-		frameEnd   = _end ?? sprite_get_number(_sprite) - 1;
-		//Get the total number of frames in the snip by subtracting the start from the end and adding 1
-		frameCount = (frameEnd - frameStart) + 1;
+		frame_start = _start;
+		frame_end = _end;
+		frame_count = (frame_end - frame_start) + 1;
+		
+		if (frame_count <= 0) {
+			var _error = $"Error creating snip for {sprite_get_name(sprite)}: End frame ({frame_end}) must be greater than or equal to start frame ({frame_start}).";
+			throw(_error);
+		}
+		
+		// Initialize arrays based on the new frame count
+		__frame_speed = array_create(frame_count, 1);
+		__frame_callback = array_create(frame_count, undefined);
+		__frame_callback_args = array_create(frame_count, []);
+	}
+	
+	/// @desc Calculates the speed scale based on the sprite's speed type.
+	/// @ignore
+	static __UpdateSpeedScale = function()
+	{
+		__speed_scale = 1;
+		if (sprite != undefined) {
+			var _is_fps = (sprite_get_speed_type(sprite) == spritespeed_framespersecond);
+			__speed_scale = _is_fps ? sprite_get_speed(sprite) / game_get_speed(gamespeed_fps) : sprite_get_speed(sprite);
+		}
+	}
+	
+	/// @desc Adds a loop to this Snip. Called by AELoop constructor.
+	/// @ignore
+	static __AddLoop = function(_loop)
+	{
+		array_push(__loops, _loop);
+	}
+	
+	/// @desc Removes a loop from this Snip. Called by AELoop.
+	/// @ignore
+	static __RemoveLoop = function(_loop)
+	{
+		var _index = array_find_index(__loops, function(item) { return item == _loop; });
+		if (_index > -1)
+		{
+			array_delete(__loops, _index, 1);
+		}
+	}
+	
+	/// @desc Adds an incoming transition. Called by AETransition constructor.
+	/// @ignore
+	static __AddIncomingTransition = function(_transition)
+	{
+		array_push(__incoming_transitions, _transition);
+	}
+	
+	/// @desc Adds an outgoing transition. Called by AETransition constructor.
+	/// @ignore
+	static __AddOutgoingTransition = function(_transition)
+	{
+		array_push(__outgoing_transitions, _transition);
+	}
+	
+	/// @desc Removes an incoming transition. Called by AETransition.
+	/// @ignore
+	static __RemoveIncomingTransition = function(_transition)
+	{
+		var _index = array_find_index(__incoming_transitions, function(item) { return item == _transition; });
+		if (_index > -1)
+		{
+			array_delete(__incoming_transitions, _index, 1);
+		}
+	}
+	
+	/// @desc Removes an outgoing transition. Called by AETransition.
+	/// @ignore
+	static __RemoveOutgoingTransition = function(_transition)
+	{
+		var _index = array_find_index(__outgoing_transitions, function(item) { return item == _transition; });
+		if (_index > -1)
+		{
+			array_delete(__outgoing_transitions, _index, 1);
+		}
+	}
+	
+	#endregion
+	
+	#region Public Methods
+	
+	/// @desc Changes the start and end frame of the Snip.
+	/// @param {Real} start_frame The new starting frame.
+	/// @param {Real} end_frame The new ending frame.
+	static SetFrameRange = function(_start_frame, _end_frame)
+	{
+		__SetFrameRangeInternal(_start_frame, _end_frame);
+		return self;
 	}
 
-	///@desc When a Snip finishes playing forwards, if it has a successor it will automatically play it with or without transition
-	///@param {Struct.AESnip} successor The snip to play after the given snip is finished playing (use undefined or -1 to remove the successor)
-	///@param {bool} [useTransition]    Optional whether or not to use a transition (default = true)
-	static setSuccessor = function(_successor, _transition=true)
+	///@desc Sets a successor to play automatically when this Snip finishes.
+	///@param {Struct.AESnip} successor_snip The snip to play next. Use 'undefined' to remove.
+	///@param {Bool} [use_transition=true] Whether to look for a transition.
+	static SetSuccessor = function(_successor_snip, _use_transition=true)
 	{
-		successor = _successor;
-		successorTransition = _transition;
+		successor = _successor_snip;
+		__successor_transition = _use_transition;
 		return self;
 	}
 	
-	///@param {bool} transition Whether or not to look for a transition between the snip and its successor
-	static setSuccessorTransition = function(_transition)
-	{
-		successorTransition = _transition;
-		return self;
-	}
-	
-	///@desc Returns the successor to the given snip (undefined if none)
-	static getSuccessor = function()
-	{
-		return (successor );
-	}
-	
-	///@desc Sets the given frame from the given Snip to the given speed
-	///@param {real} frame The frame number to set to the given speed (not image_index)
-	///@param {real} speed The speed to set the given frame relative to the Snip speed (same scale as image_speed)
-	static setFrameSpeed = function(_frame, _speed) 
-	{	
-		if (argument_count < 3) {
-			#region Check
-			if (__AE_DEBUG) {
-			if (_frame >= frameCount || _frame < 0) { 
-			var _str = string("The given frame index [{0}] is outside the bounds of the given Snip with [{1}] frames", _frame, frameCount);
-			throw(_str); 
-			} 
-			if (_speed < 0) { 
-			throw("Frame Speeds must always be larger than 0. To play a Snip backwards set the Snip speed to a negative value"); 
-			} 
-			}#endregion
-			frameSpeed[_frame] = _speed;
-			return self;
-		}
-		else {
-			var i=0; repeat(argument_count div 2) {
-				var _f = argument[i];
-				var _s = argument[i+1];
-				
-				setFrameSpeed(_f, _s);
-				
-				i++;
-			}
-			return self;
-		}
-	}
-	
-	///@desc Returns the speed for the given frame in the given Snip
-	///@param {real} frame The frame number to set to the given speed (not image_index)
-	static getFrameSpeed = function(_frame)
-	{
-		#region Check
-		if (__AE_DEBUG) {
-		//Throw an error if a bad frame is given
-		if (_frame >= frameCount || _frame < 0) {
-			var _str = string("The Sprite given frame index [{0}] is outside the bounds of the given Snip with [{1}] frames", _frame, frameCount);
-			throw(_str); 
-		} } #endregion
-		return frameSpeed[_frame];
-	}
-	
-	///@desc Resets all frame speeds in the given snip to 1
-	static resetFrameSpeed = function()
-	{
-		var i=0; repeat(array_length(frameSpeed) ) frameSpeed[i++] = 1;
-		return self;
-	}
-	
-	///@desc Changes an snip's sprite
-	///@param {Asset.GMSprite} sprite The sprite to set. The sprite must at least have a sub-image count of the snip's snip_frame_end property
-	static setSprite = function(_sprite)
-	{
-		//Changing the sprite could cause some index out of bounds errors
-		//So when changing the sprite, make sure it has enough sub-images for the snip
-	
-		//Get the number of frames in the sprite
-		var _frames = sprite_get_number(_sprite);
-		//If the sprite has fewer frames than the snip
-		if (_frames < frameEnd) {
-			var _str = string("The Sprite given in setSprite does not have enough sub-images. Sprite sub-image count: {0} Frames needed: {1}", _frames, frameEnd);
-			throw(_str); 
-		}
-		else
-		{
-			//Set the sprite
-			sprite = _sprite;
-			speedScale = 1;
-			//A value to handle the Sprite speed and speed types
-			if (_sprite != undefined)
-			{
-				// Feather disable once GM1044
-				var _type = (sprite_get_speed_type(_sprite) == spritespeed_framespergameframe);
-				speedScale = (_type) ? sprite_get_speed(_sprite) : sprite_get_speed(_sprite) / game_get_speed(gamespeed_fps);
-			}
-		}
-	}
-	
-	///@desc Returns the sprite used for the snip
-	static getSprite = function()
-	{
-		return (sprite);
-	}
-
-	///@desc Sets the speed of the Snip.
-	///@param {real} speed The speed to set the Snip to play at, positive values only
-	static setSpeed = function(_speed)
-	{
-		#region Check
-		if (__AE_DEBUG) {
-		//Check to make sure the speed is a positive value
-		if (_speed < 0)
-		{
-			throw ("The speed given in snip_set_speed cannot be negative. If you want a Snip to play backwards see snip_set_backward()");
-		} } #endregion
-		speed = _speed;
-		return self;
-	}
-	
-	///@desc Returns the overall speed of the given snip
-	static getSpeed = function()
-	{
-		return (speed );
-	}
-	
-	///@desc Adds a script that will execute every time an snip reaches a frame (only called once when changing to a frame)
-	///@param {real}     frame      frame number (relative to the Snip, not the sprite... eg not image_index)
-	///@param {Function} script     The script to run
-	///@param {Array}    [argument] The value of the argument to pass into the script
-	static setFrameCallback  = function(_frame, _fun, _args=[])
+	///@desc Sets the speed for a specific frame within the Snip.
+	///@param {Real} frame The frame number to modify (relative to the Snip).
+	///@param {Real} frame_speed The new speed for that frame.
+	static SetFrameSpeed = function(_frame, _frame_speed)
 	{	
 		#region Check
 		if (__AE_DEBUG) {
-		if (_frame >= frameCount || _frame < 0) {
-			var _str = string("The given frame index [{0}] is outside the bounds of the given Snip with [{1}] frames", _frame, frameCount);
-			throw(_str); 
-		} }#endregion
-		frameCallback    [_frame] =  _fun;
-		frameCallbackArgs[_frame] = _args;
-	}
-
-	///@desc Returns the script assigned to the given snip frame
-	///@param {real} frame The frame to get the script to
-	static getFrameCallback = function(_frame)
-	{
-		#region Check
-		if (__AE_DEBUG) {
-		if (_frame >= frameCount || _frame < 0) {
-			var _str = string("The given frame index [{0}] is outside the bounds of the given Snip with [{1}] frames", _frame, frameCount);
-			throw(_str); 
-		} } #endregion
-		return (frameScripts[_frame] );
-	}
-	
-	///@desc Returns the script assigned to the given snip frame
-	///@param {real} frame The frame to get the script to
-	static getFrameArguments = function(_frame)
-	{
-		#region Check
-		if (__AE_DEBUG) {
-		if (_frame >= frameCount || _frame < 0) {
-			var _str = string("The given frame index [{0}] is outside the bounds of the given Snip with [{1}] frames", _frame, frameCount);
-			throw(_str); 
-		} } #endregion
-		return (frameCallbackArgs[_frame] );
-	}
-	
-	///@desc Sets the behavior for when the given Snip finishes playing and there is no animation to play next	
-	///@param {Enum.AE_EndType} endType How to behave when the Snip finishes	
-	static setEndType = function(_endType) 
-	{
-		endType = _endType;
-	}
-	
-	/// @desc Returns what the Snip is set to do when it finishes as an enum AE_EndType
-	/// @return {Enum.AE_EndType}
-	static getEndType = function()
-	{
-		return (endType);
-	}
-
-	///@desc Sets the script that should be executed when the given snip ends
-	///@param {Function} script     The script to execute when the given snip ends
-	///@param {Array}    [argument] The value of argument to pass into the script
-	static setCompletionCallback = function(_fun, _args=[])
-	{
-		completeScript = _fun;
-		completeScriptArgs = _args;
-		return self;
-	}
-	
-	///@desc Sets the Snip direction to forward (AE_DIR_FORWARD) or backward (AE_DIR_BACKWARD)
-	///@param {real} direction AE_DIR_FORWARD or AE_DIR_BACKWARD
-	static setDirection = function(_direction)
-	{
-		#region Check
-		if (__AE_DEBUG) {
-		if (_direction != AE_DIR_FORWARD || _direction != AE_DIR_BACKWARD) {
-			throw("The direction is not a Ae Direction Constant");
-		} } #endregion
-		direction = _direction;
-		return self;
-	}
-	
-	///@desc Sets the Snip direction to the opposite of what it currently is
-	static reverseDirection = function()
-	{
-		direction = -direction;
-		return self;
-	}
-	
-	///@desc Gets the direction that a Snip is currently playing (AE_DIR_FORWARD or AE_DIR_BACKWARD)
-	static getDirection = function()
-	{
-		return (direction);
-	}
-	
-	///@desc Returns the given Snip frame as the sprite image index
-	///@param {real} frame The frame number within the given Snip to get the index of
-	static asFrame = function(_frame)
-	{
-		return (_frame + frameStart);
-	}
-	
-	///@desc Returns the given sprite index as the given Snip's frame index
-	///@param {real} index The sprite index number to convert into a Snip frame index
-	static asIndex = function(_index)
-	{
-		return (_index - frameStart);
-	}
-	
-	///@desc Returns the array of Loops in the snip
-	static getLoops = function()
-	{
-		return (loops);
-	}
-	
-	/// @desc Clone the current Snip
-	static clone = function() 
-	{
-		//Create a new Snip with the same properties
-		var _newSnip = new AESnip(sprite, speed, frameStart, frameEnd, endType, successor); 
-		
-		//Set other properties of the snip
-		_newSnip.completeScript     = completeScript;
-		_newSnip.completeScriptArgs = completeScriptArgs;
-		_newSnip.direction = direction;
-	
-		//Loop through all the snip frames and copy the speeds
-		var _this = self;
-		var i=0; with (_newSnip) {
-			#region Through all the snip frames and copy the speeds
-			var _tframeSpeed  = _this.frameSpeed;
-			var _tframeScript = _this.frameCallback, _tframeArgs = _this.frameCallbackArgs;
-			repeat(frameCount) {
-				setFrameSpeed(i, _tframeSpeed[i] );
-				setFrameCallback(i , _tframeScript[i], _tframeArgs[i]);
-				i++;
-			} 
-			#endregion
-			
-			#region Iterate through all the loops and create new loops for the new snip
-			array_foreach(_this.loops, function(_loop) {
-				var _nloop = new Loop(self, _loop.start, _loop.finish, _loop.iterate);	
-			});
-			
-			#endregion
-		
-			#region Iterate through all the incoming transitions and add them to the new snip
-			array_foreach(_this.incTransitions, function(_transition) {
-				var _ntransition = new Transition(_transition.from, self, _transition.use);
-			});
-			
-			#endregion
-		
-			#region Iterate through all the outgoing transitions and add them to the new snip
-			array_foreach(_this.outTransitions, function(_transition) {
-				var _ntransition = new Transition(self, _transition.to, _transition.use);
-			});
-			
-			#endregion
+			if (_frame >= frame_count || _frame < 0) {
+				throw $"Frame index [{_frame}] is out of bounds for Snip with [{frame_count}] frames.";
+			}
+			if (_frame_speed < 0) {
+				throw "Frame speeds must be positive. To play a Snip backwards, set its direction.";
+			}
 		}
-	
-		return (_newSnip);
+		#endregion
+		__frame_speed[_frame] = _frame_speed;
+		return self;
 	}
 	
-	/// @desc Debug
-	static toString = function()
+	///@desc Resets all custom frame speeds to 1.
+	static ResetFrameSpeeds = function()
 	{
-		return string("Snip [{0}]", sprite_get_name(sprite) );
+		for (var i = 0; i < frame_count; i++)
+		{
+			__frame_speed[i] = 1;
+		}
+		return self;
+	}
+	
+	///@desc Changes the Snip's sprite.
+	///@param {Asset.GMSprite} new_sprite The new sprite to use.
+	static SetSprite = function(_new_sprite)
+	{
+		#region Check
+		if (__AE_DEBUG) {
+			var _frames = sprite_get_number(_new_sprite);
+			if (_frames <= frame_end) {
+				throw $"The new sprite does not have enough frames. Frames needed: {frame_end + 1}, Sprite has: {_frames}.";
+			}
+		}
+		#endregion
+		
+		sprite = _new_sprite;
+		__UpdateSpeedScale();
+		return self;
+	}
+	
+	///@desc Sets the overall speed of the Snip.
+	///@param {Real} new_speed The new speed (must be positive).
+	static SetSpeed = function(_new_speed)
+	{
+		#region Check
+		if (__AE_DEBUG && _new_speed < 0) {
+			throw "Snip speed cannot be negative. Use SetDirection() to play backwards.";
+		}
+		#endregion
+		speed = _new_speed;
+		return self;
+	}
+	
+	///@desc Adds a function that will execute when the Snip reaches a specific frame.
+	///@param {Real} frame The frame number (relative to the Snip).
+	///@param {Function} callback The function to run.
+	///@param {Array} [args=[]] Arguments to pass to the function.
+	static SetFrameCallback = function(_frame, _callback, _args=[])
+	{	
+		#region Check
+		if (__AE_DEBUG && (_frame >= frame_count || _frame < 0)) {
+			throw $"Frame index [{_frame}] is out of bounds for Snip with [{frame_count}] frames.";
+		}
+		#endregion
+		__frame_callback[_frame] = _callback;
+		__frame_callback_args[_frame] = _args;
+		return self;
+	}
+	
+	///@desc Sets the behavior for when the Snip finishes playing.
+	///@param {Enum.AE_EndType} new_end_type The new end behavior.
+	static SetEndType = function(_new_end_type)
+	{
+		end_type = _new_end_type;
+		return self;
+	}
+	
+	///@desc Sets a function to execute when the Snip completes.
+	///@param {Function} callback The function to execute.
+	///@param {Array} [args=[]] Arguments to pass to the function.
+	static SetCompletionCallback = function(_callback, _args=[])
+	{
+		__completion_script = _callback;
+		__completion_script_args = _args;
+		return self;
+	}
+	
+	///@desc Sets the Snip's playback direction.
+	///@param {Real} new_direction AE_DIR_FORWARD (1) or AE_DIR_BACKWARD (-1).
+	static SetDirection = function(_new_direction)
+	{
+		#region Check
+		if (__AE_DEBUG && (_new_direction != AE_DIR_FORWARD && _new_direction != AE_DIR_BACKWARD)) {
+			throw "Direction must be AE_DIR_FORWARD or AE_DIR_BACKWARD.";
+		}
+		#endregion
+		direction = _new_direction;
+		return self;
+	}
+	
+	///@desc Reverses the Snip's current playback direction.
+	static ReverseDirection = function()
+	{
+		direction *= -1;
+		return self;
+	}
+	
+	/// @desc Creates a deep copy of this Snip.
+	static Clone = function()
+	{
+		var _new_snip = new AESnip(sprite, speed, frame_start, frame_end, end_type, successor);
+		
+		// Copy propertiesd
+		_new_snip.direction = direction;
+		_new_snip.__successor_transition =		__successor_transition;
+		_new_snip.__completion_script =			__completion_script;
+		_new_snip.__completion_script_args =	array_clone(__completion_script_args);
+		
+		// Copy arrays
+		array_copy(_new_snip.__frame_speed, 0, __frame_speed, 0, array_length(__frame_speed) );
+		array_copy(_new_snip.__frame_callback, 0, __frame_callback, 0, array_length(__frame_callback) );
+		array_copy(_new_snip.__frame_callback_args, 0, __frame_callback_args, 0, array_length(__frame_callback_args) );
+		
+		// Clone complex structs
+		array_foreach(__loops, method({ snip: _new_snip }, function(_loop) {
+			new AELoop(snip, _loop.fstart, _loop.fend - 1, _loop.iterate);
+		}) );
+		
+		array_foreach(__incoming_transitions, method({ snip: _new_snip }, function(_trans) {
+			new AETransition(_trans.from, snip, _trans.transition);
+		}) );
+		
+		array_foreach(__outgoing_transitions, method({ snip: _new_snip }, function(_trans) {
+			new AETransition(snip, _trans.to, _trans.transition);
+		}) );
+	
+		return _new_snip;
+	}
+	
+	/// @desc Returns a string representation of the Snip for debugging.
+	static ToString = function()
+	{
+		return $"Snip [{sprite_get_name(sprite)}]";
+	}
+	
+	#endregion
+	
+	#region Public Getters
+	
+	/// @desc Gets the speed of a specific frame.
+	static GetFrameSpeed = function(_frame)
+	{
+		#region Check
+		if (__AE_DEBUG && (_frame >= frame_count || _frame < 0)) {
+			throw $"Frame index [{_frame}] is out of bounds for Snip with [{frame_count}] frames.";
+		}
+		#endregion
+		return __frame_speed[_frame];
+	}
+	
+	/// @desc Gets the internal speed scale multiplier.
+	static GetSpeedScale = function()
+	{
+		return __speed_scale;
+	}
+	
+	/// @desc Gets the array of loops in this Snip.
+	static GetLoops = function()
+	{
+		return __loops;
 	}
 	
 	#endregion

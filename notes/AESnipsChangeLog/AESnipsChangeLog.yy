@@ -1,9 +1,11 @@
 {
-  "resourceType": "GMNotes",
-  "resourceVersion": "1.1",
-  "name": "AESnipsChangeLog",
-  "parent": {
-    "name": "Documentation",
-    "path": "folders/AESnips/Documentation.yy",
+  "$GMNotes":"",
+  "%Name":"AESnipsChangeLog",
+  "name":"AESnipsChangeLog",
+  "parent":{
+    "name":"Documentation",
+    "path":"folders/AESnips/Documentation.yy",
   },
+  "resourceType":"GMNotes",
+  "resourceVersion":"2.0",
 }

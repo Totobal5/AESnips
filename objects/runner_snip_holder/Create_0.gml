@@ -1,10 +1,16 @@
 /// @description Create the snips and transitions that the runners will use
-left_snip  = new AESnip(run_left_sprite, .5);
-right_snip = new AESnip(run_right_sprite, .5);
 
-left_right_snip = (new AESnip(run_left_to_right, .5) ).setFrameSpeed(2, .9).setFrameSpeed(3, .7).setFrameSpeed(4, .9);
-right_left_snip = (new AESnip(run_right_to_left, .5) ).setFrameSpeed(2, .9).setFrameSpeed(3, .7).setFrameSpeed(4, .9);
+// Create Snips for each state using the factory functions
+left_snip = aesnips_create_snip(run_left_sprite, 0.5);
+right_snip = aesnips_create_snip(run_right_sprite, 0.5);
 
-//Create transitions with the snips
-r_l_transition = new AETransition(right_snip, left_snip, right_left_snip);
-l_r_transition = new AETransition(left_snip, right_snip, left_right_snip);
+// Create the transition animations and chain methods to set frame speeds
+left_to_right_snip = aesnips_create_snip(run_left_to_right, 0.5);
+left_to_right_snip.SetFrameSpeed(2, 0.9).SetFrameSpeed(3, 0.7).SetFrameSpeed(4, 0.9);
+
+right_to_left_snip = aesnips_create_snip(run_right_to_left, 0.5);
+right_to_left_snip.SetFrameSpeed(2, 0.9).SetFrameSpeed(3, 0.7).SetFrameSpeed(4, 0.9);
+
+// Create transitions with the snips
+aesnips_create_transition(right_snip, left_snip, right_to_left_snip);
+aesnips_create_transition(left_snip, right_snip, left_to_right_snip);

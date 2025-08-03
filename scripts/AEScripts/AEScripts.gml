@@ -1,101 +1,118 @@
 // Feather ignore all
+
 #macro __AE_DEBUG true
 
-#macro AE_DIR_FORWARD   1
+#macro AE_DIR_FORWARD 1
 #macro AE_DIR_BACKWARD -1
 
-// How the Snip should behave when it finishes playing
+/// @desc Defines how a Snip should behave when it finishes playing.
 enum AE_EndType
 {
-	stop    ,     // Freeze on the completed frame
-	stopHead,     // Jump back to the first frame and freeze
-	stopTail,     // Jump to the last frame and freeze
-	replay  ,     // Jump back to the first frame and play again (or the last frame if the Snip is being played backward)  DEFAULT
-	pingpong,     // Reverse the Snip speed, transition to the next step when it hits the first or last frame
-	pingpongHead, // Reverse the Snip speed, only transition to next Snip when it's back to the first frame
-	pingpongTail  // Reverse the Snip speed, only transition to next Snip when it's back to the final frame
+    Stop,         // Freeze on the completed frame.
+    StopHead,     // Jump back to the first frame and freeze.
+    StopTail,     // Jump to the last frame and freeze.
+    Replay,       // Jump back to the start and play again (DEFAULT).
+    Pingpong,     // Reverse direction. Transitions on either end.
+    PingpongHead, // Reverse direction. Only transitions when back at the start.
+    PingpongTail  // Reverse direction. Only transitions when at the end.
 }
 
-///@desc Clones all the Transitions associated with the source and applies them to the destination as well (clears all previous Transitions in the destination)
-///@param {Struct.AESnip} source      The Snip with the Transitions 
-///@param {Struct.AESnip} destination The Snip that you want to clone the Transitions to
-function snip_clone_transitions(_source, _destination)
+///@desc Clones all transitions from a source Snip to a destination Snip.
+///@param {Struct.AESnip} source_snip The Snip to copy transitions from.
+///@param {Struct.AESnip} destination_snip The Snip to copy transitions to.
+function aesnips_clone_transitions(_source_snip, _destination_snip)
 {
-	#region Check
-	if (__AE_DEBUG) {
-	if (_source == undefined)
-	{
-		throw "snip_clone_transitions() Source undefined";
-		return;
-	}
-	if (_destination == undefined)
-	{
-		throw "snip_clone_transitions() destination undefined";
-		return;
-	} } #endregion
-	
-	var _sinc = _source.incTransitions, _sout = _source.outTransitions;
-	#region Iterate through all the incoming transitions and add them to the destination
-	var i=0; repeat(array_length(_sinc) ) {
-		var _transition  = _source.incTransitions[i];
-		var _ntransition = new Transition(_transition.from, _destination, _transition.use);
-		i = i + 1;
-	}
-	
-	#endregion
-	
-	#region Iterate through all the outgoing transitions and add them to the new snip
-	i=0; repeat(array_length(_sout) ) {
-		var _transition  = _sout[i];
-		var _ntransition = new Transition(_destination, _transition.to,_transition.use);
-		i = i + 1;
-	}
-	
-	#endregion
+    #region Check
+    if (__AE_DEBUG) {
+        if (!is_struct(_source_snip)) throw "aesnips_clone_transitions() Error: Source Snip is undefined.";
+        if (!is_struct(_destination_snip)) throw "aesnips_clone_transitions() Error: Destination Snip is undefined.";
+    }
+    #endregion
+    
+    // Clone incoming transitions
+    array_foreach(_source_snip.__incoming_transitions, method({ dest: _destination_snip }, function(_transition) {
+        new AETransition(_transition.GetFromSnip(), dest, _transition.GetTransitionSnip());
+    }));
+    
+    // Clone outgoing transitions
+    array_foreach(_source_snip.__outgoing_transitions, method({ dest: _destination_snip }, function(_transition) {
+        new AETransition(dest, _transition.GetToSnip(), _transition.GetTransitionSnip());
+    }));
 }
 
-///@desc Clones all the Loops found in the source Snip and applies them to the destination Snip (unless the Loop is outside the bounds of the destination)
-///@param {Struct.AESnip} source      The Snip to copy the Loops from
-///@param {Struct.AESnip} destination The Snip to copy the Loops to
-function snip_clone_loops(_source, _destination)
+///@desc Clones all loops from a source Snip to a destination Snip.
+///@param {Struct.AESnip} source_snip The Snip to copy loops from.
+///@param {Struct.AESnip} destination_snip The Snip to copy loops to.
+function aesnips_clone_loops(_source_snip, _destination_snip)
 {
-	#region Check
-	if (__AE_DEBUG) {
-	if (_source == undefined)
-	{
-		throw "snip_clone_loops() Source undefined";
-		return;
-	}
-	if (_destination == undefined)
-	{
-		throw "snip_clone_loops() destination undefined";
-		return;
-	} } #endregion
-	
-	#region Iterate through all the loops and create new Loops for the destination
-	var _sloops = _source.loops;
-	var i=0; repeat(array_length(_sloops) ) 
-	{
-		var _loop = _sloops[i];
-		if ((_loop.start > _source.frameStart) && _loop.finish < _source.frameEnd) {
-			var _nloop = new Loop(_destination, _loop.start, _loop.finish, _loop.iterate);
-		}
-		i += 1;
-	}
-	
-	#endregion
+    #region Check
+    if (__AE_DEBUG) {
+        if (!is_struct(_source_snip)) throw "aesnips_clone_loops() Error: Source Snip is undefined.";
+        if (!is_struct(_destination_snip)) throw "aesnips_clone_loops() Error: Destination Snip is undefined.";
+    }
+    #endregion
+    
+    array_foreach(_source_snip.__loops, method({ dest: _destination_snip }, function(_loop) {
+        // Ensure the loop is valid within the destination snip's frame range
+        if (_loop.GetEndFrame() < dest.frame_count)
+        {
+            new AELoop(dest, _loop.GetStartFrame(), _loop.GetEndFrame(), _loop.GetIterations());
+        }
+    }));
 }
 
-///@desc Pauses the entire snip system
-function snip_global_pause()
+///@desc Pauses the entire snip system.
+function aesnips_global_pause()
 {
-	static sn = new AEPlayer();
-	sn.gPaused = true;
+    AEPlayer.g_paused = true;
 }
 
-///@desc Resumes the entire snip system (but does not resume snips that have been individually paused)
-function snip_global_resume()
+///@desc Resumes the entire snip system.
+function aesnips_global_resume()
 {
-	static sn = new AEPlayer();
-	sn.gPaused = false;
+    AEPlayer.g_paused = false;
 }
+
+//================================================
+#region Factory Functions
+//================================================
+
+///@desc Creates and returns a new AEPlayer instance.
+function aesnips_create_player()
+{
+    return new AEPlayer();
+}
+
+///@desc Creates and returns a new AESnip instance.
+///@param {Asset.GMSprite} sprite The sprite to use for the snip.
+///@param {Real} speed The speed that the snip will play at.
+///@param {Real} [start_frame=0] Optional argument to create a snip from a subsection of a sprite.
+///@param {Real} [end_frame] Optional argument, defaults to the last frame of the sprite.
+///@param {Enum.AE_EndType} [end_type=AE_EndType.Replay] How the Snip behaves when it finishes.
+///@param {Struct.AESnip} [successor] A Snip to play after this one finishes.
+function aesnips_create_snip(_sprite, _speed, _start_frame, _end_frame, _end_type=AE_EndType.Replay, _successor=undefined)
+{
+    // Pass all arguments to the constructor, including optional ones
+    return new AESnip(argument[0], argument[1], argument[2], argument[3], argument[4], argument[5]);
+}
+
+///@desc Creates a new loop within a snip.
+///@param {Struct.AESnip} parent_snip The snip that the loop will be a part of.
+///@param {Real} start_frame The frame that the loop starts at (inclusive).
+///@param {Real} end_frame The frame that the loop will end at (inclusive).
+///@param {Real} iterations How many times to repeat after playing once.
+function aesnips_create_loop(_parent_snip, _start_frame, _end_frame, _iterations)
+{
+    return new AELoop(_parent_snip, _start_frame, _end_frame, _iterations);
+}
+
+///@desc Creates a new transition between two snips.
+///@param {Struct.AESnip} from_snip The snip the transition is coming from.
+///@param {Struct.AESnip} to_snip The snip the transition is going to.
+///@param {Struct.AESnip} transition_snip The snip that should be played as the transition.
+function aesnips_create_transition(_from_snip, _to_snip, _transition_snip)
+{
+    return new AETransition(_from_snip, _to_snip, _transition_snip);
+}
+
+#endregion

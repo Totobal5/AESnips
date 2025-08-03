@@ -1,19 +1,23 @@
 /// @description Initialize object
 
-//Create a new Snip with the cowboy sprite
-my_snip = new AESnip(blue_cowboy_sprite, 1).setFrameSpeed(4,.2,  8,.2,  16,.2);
-my_snip.setFrameCallback(6, method(id, cowboy_fire_bullet), [-10]);
+// Create a new Snip with the cowboy sprite using the factory function
+my_snip = aesnips_create_snip(blue_cowboy_sprite, 1);
 
-//Create two loops that the user controls
-shoot_loop_with_twirl = new AELoop(my_snip, 5, 12, 0);
-shoot_loop = new AELoop(my_snip, 5, 8, 0);
-//Since they repeat 0 times they don't do anything until the user presses a number
+// Chain methods using the new PascalCase naming
+my_snip.SetFrameSpeed(4, 0.2, 8, 0.2, 16, 0.2);
+my_snip.SetFrameCallback(6, method(id, cowboy_fire_bullet), [-10]);
 
-//A loop to make the cowboy look a little fancier
-twirl_loop = new AELoop(my_snip, 9, 11, 3);
+// Create two loops that the user controls
+shoot_loop_with_twirl = aesnips_create_loop(my_snip, 5, 12, 0);
+shoot_loop = aesnips_create_loop(my_snip, 5, 8, 0);
+// Since they repeat 0 times they don't do anything until the user presses a number
 
-//A variable to tell the cowboy how many times to shoot
+// A loop to make the cowboy look a little fancier
+twirl_loop = aesnips_create_loop(my_snip, 9, 11, 3);
+
+// A variable to tell the cowboy how many times to shoot
 fire_count = 1;
 
-my_player = new AEPlayer();
-my_player.play(my_snip);
+// Create the player using the factory function
+my_player = aesnips_create_player();
+my_player.Play(my_snip);

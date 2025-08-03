@@ -1,6 +1,7 @@
-/// @description Insert description here
-// You can write your code in this editor
-my_player.drawDebug(0, y + 64);
+/// @description Draw the player and its debug info
 
-my_player.draw(x + 64, y);
-my_player.draw(x - 64, y);
+my_player.DrawDebug(0, y + 64);
+
+// The original code drew two sprites. Replicating that here.
+my_player.Draw(x + 64, y);
+my_player.Draw(x - 64, y);

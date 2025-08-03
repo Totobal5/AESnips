@@ -1,23 +1,18 @@
-/// @description Mouse click flip
-var _shift = keyboard_check(vk_shift);
-if (my_player.isPlaying(runner_snip_holder.left_snip, true) ) {
-	if (_shift)
-	{
-		my_player.play(runner_snip_holder.right_snip, false);
-	}
-	else
-	{
-		my_player.playNext(runner_snip_holder.right_snip, false);
-	}	
-}
-else
+/// @description Switch to the right-facing animation.
+
+// Only switch if we are not already going right.
+if (!my_player.IsPlaying(runner_snip_holder.right_snip, true))
 {
-	if (_shift)
-	{
-		my_player.play(runner_snip_holder.left_snip, false);
-	}
-	else
-	{
-		my_player.playNext(runner_snip_holder.left_snip, false);
-	}
+    var _interrupt = keyboard_check(vk_shift);
+    var _use_transition = true; // Always try to use the turning animation
+
+    // Use Play to interrupt immediately, or PlayNext to wait.
+    if (_interrupt)
+    {
+        my_player.Play(runner_snip_holder.right_snip, _use_transition);
+    }
+    else
+    {
+        my_player.PlayNext(runner_snip_holder.right_snip, _use_transition);
+    }
 }
