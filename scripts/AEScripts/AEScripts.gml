@@ -1,5 +1,5 @@
 // Feather ignore all
-
+#macro __AE_VERSION "2.0.0"
 #macro __AE_DEBUG true
 
 #macro AE_DIR_FORWARD 1
